@@ -1,6 +1,6 @@
 - 👋 Hi, I’m @Noorain042
-- 👀 I’m interested in coding and public apeaking
-- 🌱 I’m currently learning c 
+- 👀 I’m interested in coding and public speaking
+- 🌱 I’m currently learning c and time management 
 - 💞️ I’m looking to collaborate on a mentor 
 - 📫 How to reach on intagram_rumaisa_02
 - 😄 Pronouns: ... 
