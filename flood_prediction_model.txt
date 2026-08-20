@@ -1,0 +1,47 @@
+import argparse, os, json
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.ensemble import RandomForestRegressor, ExtraTreesRegressor, GradientBoostingRegressor, RandomForestClassifier
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.inspection import permutation_importance
+
+FEATURES = ["MonsoonIntensity","TopographyDrainage","RiverManagement","Deforestation","Urbanization","ClimateChange","DamsQuality","Siltation","AgriculturalPractices","Encroachments","IneffectiveDisasterPreparedness","DrainageSystems","CoastalVulnerability","Landslides","Watersheds","DeterioratingInfrastructure","PopulationScore","WetlandLoss","InadequatePlanning","PoliticalFactors"]
+TARGET = "FloodProbability"
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument("csv")
+    ap.add_argument("--out", default="predictions.csv")
+    args=ap.parse_args()
+    df=pd.read_csv(args.csv)
+    missing=[c for c in FEATURES+[TARGET] if c not in df.columns]
+    if missing: raise ValueError(f"Missing columns: {missing}")
+    df=df[FEATURES+[TARGET]].apply(pd.to_numeric, errors="coerce").dropna(subset=[TARGET])
+    X=df[FEATURES]; y=df[TARGET]
+    Xtr,Xv,ytr,yv=train_test_split(X,y,test_size=.2,random_state=42)
+    models={
+      "ExtraTrees":ExtraTreesRegressor(n_estimators=400,min_samples_leaf=2,random_state=42,n_jobs=-1),
+      "RandomForest":RandomForestRegressor(n_estimators=400,min_samples_leaf=2,random_state=42,n_jobs=-1),
+      "GradientBoosting":GradientBoostingRegressor(n_estimators=300,learning_rate=.03,max_depth=2,random_state=42)
+    }
+    rows=[]
+    fitted={}
+    for name,m in models.items():
+        pipe=Pipeline([("imputer",SimpleImputer(strategy="median")),("model",m)])
+        pipe.fit(Xtr,ytr); p=pipe.predict(Xv)
+        rows.append({"model":name,"MAE":mean_absolute_error(yv,p),"RMSE":np.sqrt(mean_squared_error(yv,p)),"R2":r2_score(yv,p)})
+        fitted[name]=pipe
+    scores=pd.DataFrame(rows).sort_values("RMSE")
+    best=scores.iloc[0]["model"]
+    final=Pipeline([("imputer",SimpleImputer(strategy="median")),("model":models[best])])
+    final.fit(X,y)
+    pred=final.predict(X)
+    out=pd.DataFrame({"actual":y,"fitted_prediction":pred})
+    out.to_csv(args.out,index=False)
+    scores.to_csv("model_scores.csv",index=False)
+    print(scores.to_string(index=False)); print("Best:",best)
+
+if __name__=="__main__": main()
